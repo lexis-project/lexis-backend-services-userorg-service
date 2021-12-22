@@ -1,0 +1,1535 @@
+---
+swagger: "2.0"
+host: "localhost:8000"
+basePath: "/api/v0.3"
+info:
+  title: User-Organization API
+  description: An API which supports management of customers and organizations within the LEXIS portal; this version is intended for use in LEXIS Portal R1
+  version: "0.3.2021-12-15"
+  contact:
+    email: diego@cyclops-labs.io
+  license:
+    name: Apache 2.0
+    url: 'http://www.apache.org/licenses/LICENSE-2.0.html'
+
+tags:
+  - name: accessManagement
+    description: Actions relating to the access control and roles of the users
+  - name: statusManagement
+    description: Actions relating to the reporting of the state of the service
+  - name: userManagement
+    description: Actions relating to management of users
+  - name: organizationManagement
+    description: Actions relating to management of organizations
+  - name: projectManagement
+    description: Actions relating to management of projects
+  - name: hpcManagement
+    description: Actions relating to management of hpc resources
+  - name: invitationsManagement
+    description: Actions relating to management of the invitations to join organizations/projects
+
+securityDefinitions:
+  APIKeyHeader:
+    type: apiKey
+    in: header
+    name: X-API-KEY
+  APIKeyParam:
+    type: apiKey
+    in: query
+    name: api_key
+  Keycloak:
+    type: oauth2
+    flow:  accessCode
+    authorizationUrl: 'http://localhost:8080/auth/realms/Dev/protocol/openid-connect/auth'
+    tokenUrl: 'http://localhost:8080/auth/realms/Dev/protocol/openid-connect/token'
+    scopes:
+      lex_adm: $Deity scope, can do absoulutely anything
+      lex_sup: $Deity scope with restrictions.
+      org_mgr: Organization Manager
+      prj_mgr: Project/Workflows Manager
+      dat_mgr: Datasets Manager
+      end_usr: Plain user
+
+schemes:
+  - http
+  - https
+
+security:
+  - Keycloak: [lex_adm, lex_sup, org_mgr, prj_mgr, dat_mgr, end_usr]
+
+paths:
+  /status:
+    get:
+      tags:
+        - statusManagement
+      produces:
+        - application/json
+      summary: Basic status of the system
+      operationId: showStatus
+      security:
+       - Keycloak: [lex_adm, lex_sup, org_mgr, prj_mgr, dat_mgr, end_usr]
+       - APIKeyHeader: []
+       - APIKeyParam: []
+      responses:
+        '200':
+          description: Status information of the system
+          schema:
+            $ref: "#/definitions/Status"
+  /status/{id}:
+    get:
+      tags:
+        - statusManagement
+      produces:
+        - application/json
+      summary: Basic status of the system
+      operationId: getStatus
+      security:
+       - Keycloak: [lex_adm, lex_sup, org_mgr, prj_mgr, dat_mgr, end_usr]
+       - APIKeyHeader: []
+       - APIKeyParam: []
+      responses:
+        '200':
+          description: Status information of the system
+          schema:
+            $ref: "#/definitions/Status"
+        '404':
+          description: The endpoint provided doesn't exis
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - name: id
+          in: path
+          type: string
+          enum:
+          - status
+          - user
+          - organization
+          - project
+          - hpcresource
+          required: true
+          description: Id of the endpoint to be checked
+
+  /user:
+    get:
+      tags:
+        - userManagement
+      produces:
+        - application/json
+      summary: List all users
+      operationId: listUsers
+      description: lists all users (tbd - pagination?)
+      responses:
+        '200':
+          description: list of users returned
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/User"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: query
+          name: email
+          description: email to filter when listing
+          type: string
+          format: email
+        - in: query
+          name: project
+          description: project uuid to filter when listing
+          type: string
+          format: uuid
+        - in: query
+          name: permissions
+          description: users permissions switch
+          type: boolean
+        - in: query
+          name: scope
+          description: organization scope switch
+          type: string
+          enum:
+          - ALL
+          - OWN
+          - ALLOWED
+          default: OWN
+    post:
+      tags:
+        - userManagement
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      summary: Create a user
+      operationId: createUser
+      description: Creates a new user
+      responses:
+        '201':
+          description: user created
+          schema:
+            $ref: "#/definitions/CreatedResponse"
+        '409':
+          description: an existing item already exists
+          schema:
+            $ref: "#/definitions/ConflictResponse"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: body
+          name: user
+          description: User to be added
+          schema:
+            $ref: '#/definitions/User'
+  /user/{id}:
+    get:
+      tags:
+        - userManagement
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      summary: Get specific user
+      operationId: getUser
+      description: get user with given userId
+      responses:
+        '200':
+          description: user returned
+          schema:
+            $ref: "#/definitions/User"
+        '404':
+          description: user with userId not found
+          schema:
+            $ref: "#/definitions/MissingResponse"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: path
+          name: id
+          type: string
+          format: uuid
+          required: true
+          description: keycloak Id of user to be obtained
+        - in: query
+          name: permissions
+          description: permissions switch
+          type: boolean
+    put:
+      tags:
+        - userManagement
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      summary: Update specific user
+      operationId: updateUser
+      description: Update user with given userId
+      responses:
+        '200':
+          description: updated user
+          schema:
+            $ref: "#/definitions/User"
+        '404':
+          description: user with userId not found
+          schema:
+            $ref: "#/definitions/MissingResponse"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: path
+          name: id
+          type: string
+          format: uuid
+          required: true
+          description: Id of user to be obtained
+        - in: body
+          name: user
+          required: true
+          description: updated user data to be added
+          schema:
+            $ref: "#/definitions/User"
+    delete:
+      tags:
+        - userManagement
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      summary: Delete specific user
+      operationId: deleteUser
+      description: Delete user with given userId
+      responses:
+        '200':
+          description: user deleted successfully
+          schema:
+            $ref: "#/definitions/DeletedResponse"
+        '404':
+          description: user with userId not found
+          schema:
+            $ref: "#/definitions/MissingResponse"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: path
+          name: id
+          type: string
+          format: uuid
+          required: true
+          description: Id of user to be obtained
+
+  /organization:
+    get:
+      tags:
+        - organizationManagement
+      produces:
+        - application/json
+      summary: list organizations
+      operationId: listOrganizations
+      description: lists all organizations
+      responses:
+        '200':
+          description: list of organizations
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/Organization"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: query
+          name: scope
+          description: organization scope switch
+          type: string
+          enum:
+          - ALL
+          - OWN
+          - ALLOWED
+          default: OWN
+    post:
+      tags:
+        - organizationManagement
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      summary: create Organization
+      operationId: createOrganization
+      description: Creates a new organization
+      responses:
+        '201':
+          description: organization created
+          schema:
+            $ref: "#/definitions/CreatedResponse"
+        '409':
+          description: an existing item already exists
+          schema:
+            $ref: "#/definitions/ConflictResponse"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: body
+          name: organization
+          description: Organization to be added
+          schema:
+            $ref: '#/definitions/Organization'
+  /organization/{id}:
+    get:
+      tags:
+        - organizationManagement
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      summary: Get specific organization
+      operationId: getOrganization
+      description: get organization with given organizationId
+      responses:
+        '200':
+          description: organization returned
+          schema:
+            $ref: "#/definitions/Organization"
+        '404':
+          description: organization with organizationId not found
+          schema:
+            $ref: "#/definitions/MissingResponse"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: path
+          name: id
+          type: string
+          format: uuid
+          required: true
+          description: Id of organization to be obtained
+    put:
+      tags:
+        - organizationManagement
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      summary: Update specific organization
+      operationId: updateOrganization
+      description: Update organization with given organizationId
+      responses:
+        '200':
+          description: updated organization
+          schema:
+            $ref: "#/definitions/Organization"
+        '404':
+          description: organization with organizationId not found
+          schema:
+            $ref: "#/definitions/MissingResponse"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: path
+          name: id
+          type: string
+          format: uuid
+          required: true
+          description: Id of organization to be obtained
+        - in: body
+          name: organization
+          required: true
+          description: updated organization data to be added
+          schema:
+            $ref: "#/definitions/Organization"
+    delete:
+      tags:
+        - organizationManagement
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      summary: Delete specific organization
+      operationId: deleteOrganization
+      description: Delete organization with given organizationId
+      responses:
+        '200':
+          description: deleted organization
+          schema:
+            $ref: "#/definitions/DeletedResponse"
+        '404':
+          description: organization with organizationId not found
+          schema:
+            $ref: "#/definitions/MissingResponse"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: path
+          name: id
+          type: string
+          format: uuid
+          required: true
+          description: Id of organization to be obtained
+  /organization/{id}/user/{userID}:
+    put:
+      tags:
+        - organizationManagement
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      summary: Adds user to organization
+      operationId: addUserToOrganization
+      description: Adds user to organization
+      responses:
+        '200':
+          description: user updated
+          schema:
+            $ref: "#/definitions/OKResponse"
+        '404':
+          description: organization with organizationId not found
+          schema:
+            $ref: "#/definitions/MissingResponse"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: path
+          name: id
+          type: string
+          format: uuid
+          required: true
+          description: Id of organization to be obtained
+        - in: path
+          name: userID
+          type: string
+          format: uuid
+          required: true
+          description: Id of user to be added
+    delete:
+      tags:
+        - organizationManagement
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      summary: Delete user from organization
+      operationId: deleteUserFromOrganization
+      description: Delete user from organization
+      responses:
+        '200':
+          description: deleted user from organization
+          schema:
+            $ref: "#/definitions/DeletedResponse"
+        '404':
+          description: organization or user not found
+          schema:
+            $ref: "#/definitions/MissingResponse"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: path
+          name: id
+          type: string
+          format: uuid
+          required: true
+          description: Id of organization to be obtained
+        - in: path
+          name: userID
+          type: string
+          format: uuid
+          required: true
+          description: Id of user to be removed
+
+  /project:
+    get:
+      tags:
+        - projectManagement
+      produces:
+        - application/json
+      summary: list projects
+      operationId: listProjects
+      description: lists all projects
+      responses:
+        '200':
+          description: list of projectss
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/Project"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: query
+          name: scope
+          description: project scope switch
+          type: string
+          enum:
+          - ALL
+          - OWN
+          - ALLOWED
+          default: ALL
+    post:
+      tags:
+        - projectManagement
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      summary: create Project
+      operationId: createProject
+      description: Creates a new project
+      responses:
+        '201':
+          description: project created
+          schema:
+            $ref: "#/definitions/CreatedResponse"
+        '409':
+          description: an existing item already exists
+          schema:
+            $ref: "#/definitions/ConflictResponse"
+        '422':
+          description: Shortname duplicated
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: body
+          name: project
+          description: Project to be added
+          schema:
+            $ref: '#/definitions/Project'
+  /project/{id}:
+    get:
+      tags:
+        - projectManagement
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      summary: Get specific project
+      operationId: getProject
+      description: get project with given id
+      responses:
+        '200':
+          description: project returned
+          schema:
+            $ref: "#/definitions/Project"
+        '404':
+          description: project with not found
+          schema:
+            $ref: "#/definitions/MissingResponse"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: path
+          name: id
+          type: string
+          format: uuid
+          required: true
+          description: Id of project to be obtained
+    put:
+      tags:
+        - projectManagement
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      summary: Update specific project
+      operationId: updateProject
+      description: Update project with given id
+      responses:
+        '200':
+          description: updated project
+          schema:
+            $ref: "#/definitions/Project"
+        '404':
+          description: project with not found
+          schema:
+            $ref: "#/definitions/MissingResponse"
+        '422':
+          description: Shortname duplicated
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: path
+          name: id
+          type: string
+          format: uuid
+          required: true
+          description: Id of project to be obtained
+        - in: body
+          name: project
+          required: true
+          description: updated project data to be added
+          schema:
+            $ref: "#/definitions/Project"
+    delete:
+      tags:
+        - projectManagement
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      summary: Delete specific project
+      operationId: deleteProject
+      description: Delete project with given id
+      responses:
+        '200':
+          description: deleted project
+          schema:
+            $ref: "#/definitions/DeletedResponse"
+        '404':
+          description: project with not found
+          schema:
+            $ref: "#/definitions/MissingResponse"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: path
+          name: id
+          type: string
+          format: uuid
+          required: true
+          description: Id of project to be obtained
+  /project/{id}/user/{userID}:
+    put:
+      tags:
+        - projectManagement
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      summary: Add user to project
+      operationId: addUserToProject
+      description: Add user to project
+      responses:
+        '200':
+          description: user updated
+          schema:
+            $ref: "#/definitions/OKResponse"
+        '404':
+          description: project or user not found
+          schema:
+            $ref: "#/definitions/MissingResponse"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: path
+          name: id
+          type: string
+          format: uuid
+          required: true
+          description: Id of project to be obtained
+        - in: path
+          name: userID
+          type: string
+          format: uuid
+          required: true
+          description: Id of user to be added
+    delete:
+      tags:
+        - projectManagement
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      summary: Delete user from project
+      operationId: deleteUserFromProject
+      description: Delete user from project
+      responses:
+        '200':
+          description: deleted user from project
+          schema:
+            $ref: "#/definitions/DeletedResponse"
+        '404':
+          description: project or user not found
+          schema:
+            $ref: "#/definitions/MissingResponse"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: path
+          name: id
+          type: string
+          format: uuid
+          required: true
+          description: Id of project to be obtained
+        - in: path
+          name: userID
+          type: string
+          format: uuid
+          required: true
+          description: Id of user to be removed
+
+  /hpc/resource:
+    get:
+      tags:
+        - hpcManagement
+      produces:
+        - application/json
+      summary: list HPCResource
+      operationId: listHPCResources
+      description: lists all HPCResource
+      responses:
+        '200':
+          description: list of HPCResources
+          schema:
+            type: array
+            items:
+              $ref: "#/definitions/HPCResource"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: query
+          name: scope
+          description: organization scope switch
+          type: string
+          enum:
+          - ALL
+          - OWN
+          - ALLOWED
+          default: ALL
+    post:
+      tags:
+        - hpcManagement
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      summary: create HPCResource
+      operationId: createHPCResource
+      description: Creates a new HPCResource
+      responses:
+        '201':
+          description: HPCResource created
+          schema:
+            $ref: "#/definitions/CreatedResponse"
+        '409':
+          description: an existing item already exists
+          schema:
+            $ref: "#/definitions/ConflictResponse"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: body
+          name: HPCResource
+          description: HPCResource to be added
+          schema:
+            $ref: '#/definitions/HPCResource'
+  /hpc/resource/{id}:
+    get:
+      tags:
+        - hpcManagement
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      summary: Get specific HPCResource
+      operationId: getHPCResource
+      description: get HPCResource with given id
+      responses:
+        '200':
+          description: HPCResource returned
+          schema:
+            $ref: "#/definitions/HPCResource"
+        '404':
+          description: HPCResource with not found
+          schema:
+            $ref: "#/definitions/MissingResponse"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: path
+          name: id
+          type: string
+          required: true
+          description: Id of HPCResource to be obtained
+    put:
+      tags:
+        - hpcManagement
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      summary: Update specific HPCResource
+      operationId: updateHPCResource
+      description: Update HPCResource with given id
+      responses:
+        '200':
+          description: updated HPCResource
+          schema:
+            $ref: "#/definitions/HPCResource"
+        '404':
+          description: HPCResource with not found
+          schema:
+            $ref: "#/definitions/MissingResponse"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: path
+          name: id
+          type: string
+          required: true
+          description: Id of HPCResource to be obtained
+        - in: body
+          name: HPCResource
+          required: true
+          description: updated HPCResource data to be added
+          schema:
+            $ref: "#/definitions/HPCResource"
+    delete:
+      tags:
+        - hpcManagement
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      summary: Delete specific HPCResource
+      operationId: deleteHPCResource
+      description: Delete HPCResource with given id
+      responses:
+        '200':
+          description: deleted HPCResource
+          schema:
+            $ref: "#/definitions/DeletedResponse"
+        '404':
+          description: HPCResource with not found
+          schema:
+            $ref: "#/definitions/MissingResponse"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: path
+          name: id
+          type: string
+          required: true
+          description: Id of HPCResource to be obtained
+
+  /authz/{userID}/add/{role}:
+    post:
+      tags:
+        - accessManagement
+      produces:
+        - application/json
+      summary: add a role to the specified user
+      operationId: addRole
+      description: It adds a role to the user
+      responses:
+        '200':
+          description: Role added successfully
+          schema:
+            $ref: "#/definitions/RoleAdded"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '404':
+          description: user/org/prj not found
+          schema:
+            $ref: "#/definitions/MissingResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: path
+          name: userID
+          type: string
+          format: uuid
+          required: true
+          description: Id of the user to be modified
+        - in: path
+          name: role
+          type: string
+          required: true
+          description: role to be added
+        - in: query
+          name: organizationID
+          type: string
+          format: uuid
+          required: true
+          description: Id of the organization linked
+        - in: query
+          name: projectID
+          type: string
+          format: uuid
+          description: Id of the project linked
+        - in: query
+          name: projectShortName
+          type: string
+          description: Short name of the project linked
+
+  /authz/{userID}/clear:
+    post:
+      tags:
+        - accessManagement
+      produces:
+        - application/json
+      summary: clears the actual role of the user and assignes a end_user one
+      operationId: clearRole
+      description: It clears the actual role of the user and assignes a end_user one
+      responses:
+        '200':
+          description: Role added successfully
+          schema:
+            $ref: "#/definitions/RoleAdded"
+        '401':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '403':
+          description: Authorization error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+        '404':
+          description: user/org/prj not found
+          schema:
+            $ref: "#/definitions/MissingResponse"
+        '500':
+          description: unexpected error
+          schema:
+            $ref: "#/definitions/ErrorResponse"
+      parameters:
+        - in: path
+          name: userID
+          type: string
+          format: uuid
+          required: true
+          description: Id of the user to be modified
+        - in: query
+          name: organizationID
+          type: string
+          format: uuid
+          required: true
+          description: Id of the organization linked
+        - in: query
+          name: projectID
+          type: string
+          format: uuid
+          description: Id of the project linked
+        - in: query
+          name: projectShortName
+          type: string
+          description: Short name of the project linked
+
+definitions:
+  Metadata:
+    type: object
+    x-go-type:
+      import:
+        package: "gitlab.com/cyclops-utilities/datamodels"
+      type: JSONdb
+  StringArray:
+    x-go-type:
+      import:
+        package: "github.com/lib/pq"
+      type: StringArray
+  Status:
+    type: object
+    properties:
+      AverageResponseTime:
+        type: number
+        format: double
+      EndpointsResponseTime:
+        $ref: '#/definitions/Metadata'
+      LastRequest:
+        type: string
+      RequestsBoT:
+        type: integer
+      RequestsLastHour:
+        type: integer
+      RequestsToday:
+        type: integer
+      SystemState:
+        type: string
+
+  User:
+    type: object
+    properties:
+      ID:
+        type: string
+        format: uuid
+        description: This is an id generated by keycloak
+        x-go-custom-tag: gorm:"type:uuid;primary_key"
+      Username:
+        type: string
+        x-go-custom-tag: gorm:"column:username"
+      FirstName:
+        type: string
+        x-go-custom-tag: gorm:"column:firstname"
+      LastName:
+        type: string
+        x-go-custom-tag: gorm:"column:lastname"
+      RegistrationDateTime:
+        type: string
+        format: date-time
+        x-go-custom-tag: gorm:"column:registrationdatetime;type:timestamptz;default:now()"
+      EmailAddress:
+        type: string
+        format: email
+        x-go-custom-tag: gorm:"column:emailaddress"
+      OrganizationID:
+        type: string
+        format: uuid
+        x-go-custom-tag: gorm:"column:organizationid"
+      AllowedOrganizations:
+        $ref: '#/definitions/StringArray'
+        x-go-custom-tag: gorm:"column:allowedorganizations;type:text[]"
+      Permissions:
+        $ref: '#/definitions/Metadata'
+        x-go-custom-tag: gorm:"-"
+      Projects:
+        $ref: '#/definitions/StringArray'
+        x-go-custom-tag: gorm:"column:projects;type:text[]"
+      PGPKeyID:
+        type: string
+        description: This is an id for a PGP Key - what it means is still tbd
+        x-go-custom-tag: gorm:"column:pgpkeyid"
+      UserStatus:
+        type: string
+        enum:
+        - ENABLED
+        - DISABLED
+        x-go-custom-tag: gorm:"column:userstatus"
+      AgreedToTermsOfUse:
+        type: boolean
+        x-go-custom-tag: gorm:"column:agreedtotermsofuse;type:bool"
+      TermsOfUseVersion:
+        type: string
+        x-go-custom-tag: gorm:"column:termsofuseversion"
+      DateOfAgreementToTermsOfUse:
+        type: string
+        format: date-time
+        x-go-custom-tag: gorm:"column:dateofagreementtotermsofuse;type:timestamptz;default:now()"
+      AgreeToUseOfCookies:
+        type: boolean
+        x-go-custom-tag: gorm:"column:agreetouseofcookies;type:bool"
+      DateOfAgreementToUseOfCookies:
+        type: string
+        format: date-time
+        x-go-custom-tag: gorm:"column:dateofagreementtouseofcookies;type:timestamptz;default:now()"
+
+  Organization:
+    type: object
+    properties:
+      ID:
+        type: string
+        format: uuid
+        x-go-custom-tag: gorm:"type:uuid;primary_key;unique;default:md5(random()::text || clock_timestamp()::text)::uuid"
+      FormalName:
+        type: string
+        x-go-custom-tag: gorm:"column:formalname"
+      RegisteredAddress1:
+        type: string
+        x-go-custom-tag: gorm:"column:registeredaddress1"
+      RegisteredAddress2:
+        type: string
+        x-go-custom-tag: gorm:"column:registeredaddress2"
+      RegisteredAddress3:
+        type: string
+        x-go-custom-tag: gorm:"column:registeredaddress3"
+      RegisteredCountry:
+        type: string
+        format: country
+        x-go-custom-tag: gorm:"column:registeredcountry"
+      CreationDate:
+        type: string
+        format: date-time
+        x-go-custom-tag: gorm:"column:registrationdatetime;type:timestamptz;default:now()"
+      CreatedBy:
+        # userid who created this organization
+        type: string
+        format: uuid
+        x-go-custom-tag: gorm:"column:createdby;type:uuid"
+      Website:
+        type: string
+        format: url
+      OrganizationEmailAddress:
+        type: string
+        format: email
+        x-go-custom-tag: gorm:"column:organizationemailaddress"
+      PrimaryTelephoneNumber:
+        type: string
+        format: telephone-number
+        x-go-custom-tag: gorm:"column:primarytelephonenumber"
+      VATRegistrationNumber:
+        type: string
+        x-go-custom-tag: gorm:"column:vatregistrationnumber"
+      OrganizationStatus:
+        type: string
+        enum:
+        - PENDING_APPROVAL
+        - APPROVED
+        - DISABLED
+        - TERMINATED
+        x-go-custom-tag: gorm:"column:organizationstatus"
+
+  Project:
+    type: object
+    properties:
+      ProjectID:
+        type: string
+        format: uuid
+        x-go-custom-tag: gorm:"column:projectid;type:uuid;primary_key;unique;default:md5(random()::text || clock_timestamp()::text)::uuid"
+      ProjectName:
+        type: string
+        x-go-custom-tag: gorm:"column:projectname"
+      ProjectShortName:
+        type: string
+        x-go-custom-tag: gorm:"column:projectshortname;unique"
+      ProjectDescription:
+        type: string
+        x-go-custom-tag: gorm:"column:projectdescription"
+      ProjectCreationTime:
+        type: string
+        format: date-time
+        x-go-custom-tag: gorm:"column:projectcreationtime;type:timestamptz;default:now()"
+      ProjectCreatedBy:
+        type: string
+        format: uuid
+        x-go-custom-tag: gorm:"column:projectcreatedby;type:uuid"
+      LinkedOrganization:
+        type: string
+        format: uuid
+        x-go-custom-tag: gorm:"column:linkedorganization;type:uuid"
+      AllowedOrganizations:
+        $ref: '#/definitions/StringArray'
+        x-go-custom-tag: gorm:"column:allowedorganizations;type:text[]"
+      ProjectStatus:
+        type: string
+        enum:
+        - PENDING
+        - ACTIVE
+        - DISABLED
+        - TERMINATED
+        x-go-custom-tag: gorm:"column:projectstatus"
+      ProjectContactPerson:
+        type: string
+        format: uuid
+        x-go-custom-tag: gorm:"column:projectcontactperson;type:uuid"
+      ProjectStartDate:
+        type: string
+        format: date-time
+        x-go-custom-tag: gorm:"column:projectstartdate;type:timestamptz"
+      ProjectTerminationDate:
+        type: string
+        format: date-time
+        x-go-custom-tag: gorm:"column:projectterminationdate;type:timestamptz"
+      ProjectMaxPrice:
+        type: number
+        format: double
+        default: 0.0
+        x-nullable: true
+        x-go-custom-tag: gorm:"column:projectmaxprice;type:float8;default:0.0"
+      NormCoreHours:
+        type: integer
+        default: 0
+        x-nullable: true
+        x-go-custom-tag: gorm:"column:normcorehours;default:0"
+      ProjectContactEmail:
+        type: string
+        format: email
+        x-go-custom-tag: gorm:"column:projectcontactemail"
+      ProjectDomain:
+        type: string
+        x-go-custom-tag: gorm:"column:projectdomain"
+
+  HPCResource:
+    type: object
+    properties:
+      HPCResourceID:
+        type: string
+        x-go-custom-tag: gorm:"column:hpcresourceid;primary_key;unique;default:md5(random()::text || clock_timestamp()::text)::uuid"
+      AssociatedHPCProject:
+        type: string
+        x-go-custom-tag: gorm:"column:associatedhpcproject"
+      AssociatedLEXISProject:
+        type: string
+        format: uuid
+        x-go-custom-tag: gorm:"column:associatedlexisproject;type:uuid"
+      ApprovalStatus:
+        type: string
+        enum:
+        - ACCEPTED
+        - REJECTED
+        - PENDING
+        x-go-custom-tag: gorm:"column:approvalstatus"
+      CloudNetworkName:
+        type: string
+        x-go-custom-tag: gorm:"column:cloudnetworkname"
+      ProjectNetworkName:
+        type: string
+        x-go-custom-tag: gorm:"column:projectnetworkname"
+      HEAppEEndpoint:
+        type: string
+        x-go-custom-tag: gorm:"column:heappeendpoint"
+      HPCProvider:
+        type: string
+        enum:
+        - IT4I
+        - LRZ
+        - ICHEC
+        x-go-custom-tag: gorm:"column:hpcprovider"
+      OpenStackEndpoint:
+        type: string
+        x-go-custom-tag: gorm:"column:openstackendpoint"
+      OpenStackProjectID:
+        type: string
+        x-go-custom-tag: gorm:"column:openstackprojectid"
+      ResourceType:
+        type: string
+        enum:
+        - CLOUD
+        - HPC
+        - SMARTGW
+        x-go-custom-tag: gorm:"column:resourcetype"
+      TermsConsent:
+        type: boolean
+        x-go-custom-tag: gorm:"column:termsconsent;type:bool"
+
+  CreatedResponse:
+    type: object
+    properties:
+      ID:
+        type: string
+      Link:
+        type: string
+
+  ConflictResponse:
+    type: object
+    properties:
+      ID:
+        type: string
+      Message:
+        type: string
+
+  DeletedResponse:
+    type: object
+    properties:
+      ID:
+        type: string
+      Message:
+        type: string
+
+  OKResponse:
+    type: object
+    properties:
+      Message:
+        type: string
+
+  ErrorResponse:
+    type: object
+    properties:
+      Message:
+        type: string
+
+  MissingResponse:
+    type: object
+    properties:
+      ID:
+        type: string
+      Message:
+        type: string
+
+  RoleAdded:
+    type: object
+    properties:
+      Message:
+        type: string
