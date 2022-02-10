@@ -46,7 +46,7 @@ Within the folder Utils there's also a couple of scripts to generate self-signed
 Same goes for the system-tester (WIP: some more tests should be created) script which only contains a basic test of the system.
 
 
-# Useful links
+## Useful links
 
 - Fast overview of golang: https://learnxinyminutes.com/docs/go/
 - Swagger generation tool: https://github.com/Stratoscale/swagger
