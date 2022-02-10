@@ -1,10 +1,13 @@
-# LEXIS PORTAL - UserOrg Service
+# lexis-backend-services-userorg-service
 
-The UserOrg service manages the creation, deletion, listing, and update of the following data related to LEXIS:
+The UserOrg service behind the LEXIS PORTAL manages the creation, deletion, listing, and update of the following data related to LEXIS:
 - Users
 - Organizations
 - Projects
 - HPCResources
+
+## Acknowledgement
+This code repository is a result / contains results of the LEXIS project. The project has received funding from the European Union’s Horizon 2020 Research and Innovation programme (2014-2020) under grant agreement No. 825532.
 
 
 ## Capabilities
