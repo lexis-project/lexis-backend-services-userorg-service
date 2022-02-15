@@ -1,5 +1,7 @@
 # lexis-backend-services-userorg-service
 
+<a href="https://doi.org/10.5281/zenodo.6080531"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.6080531.svg" alt="DOI"></a>
+
 The UserOrg service behind the LEXIS PORTAL manages the creation, deletion, listing, and update of the following data related to LEXIS:
 - Users
 - Organizations
